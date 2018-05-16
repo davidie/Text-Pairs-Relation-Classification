@@ -66,6 +66,7 @@ def test_ann():
 
     logger.info('✔︎ Test data padding...')
     x_test_front, x_test_behind, y_test = dh.pad_data(test_data, FLAGS.pad_seq_len)
+    y_test_labels = test_data.labels
 
     # Load ann model
     logger.info("✔ Loading model...")
@@ -106,14 +107,16 @@ def test_ann():
             tf.train.write_graph(output_graph_def, 'graph', 'graph-ann-{0}.pb'.format(MODEL), as_text=False)
 
             # Generate batches for one epoch
-            batches = dh.batch_iter(list(zip(x_test_front, x_test_behind, y_test)), FLAGS.batch_size, 1, shuffle=False)
+            batches = dh.batch_iter(list(zip(x_test_front, x_test_behind, y_test, y_test_labels)),
+                                    FLAGS.batch_size, 1, shuffle=False)
 
             # Collect the predictions here
+            all_labels = []
             all_predicted_labels = []
             all_predicted_values = []
 
             for index, x_test_batch in enumerate(batches):
-                x_batch_front, x_batch_behind, y_batch = zip(*x_test_batch)
+                x_batch_front, x_batch_behind, y_batch, y_batch_labels = zip(*x_test_batch)
                 feed_dict = {
                     input_x_front: x_batch_front,
                     input_x_behind: x_batch_behind,
@@ -121,6 +124,8 @@ def test_ann():
                     dropout_keep_prob: 1.0,
                     is_training: False
                 }
+
+                all_labels = np.append(all_labels, y_batch_labels)
 
                 batch_predicted_labels = sess.run(predictions, feed_dict)
                 all_predicted_labels = np.concatenate([all_predicted_labels, batch_predicted_labels])
@@ -135,9 +140,9 @@ def test_ann():
             # Save the prediction result
             if not os.path.exists(SAVE_DIR):
                 os.makedirs(SAVE_DIR)
-            dh.create_prediction_file(file=SAVE_DIR + '/predictions.json', front_data_id=test_data.front_testid,
-                                      behind_data_id=test_data.behind_testid, all_predict_labels=all_predicted_labels,
-                                      all_predict_values=all_predicted_values)
+            dh.create_prediction_file(output_file=SAVE_DIR + '/predictions.json', front_data_id=test_data.front_testid,
+                                      behind_data_id=test_data.behind_testid, all_labels=all_labels,
+                                      all_predict_labels=all_predicted_labels, all_predict_values=all_predicted_values)
 
     logger.info("✔ Done.")
 

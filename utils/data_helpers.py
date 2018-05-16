@@ -8,6 +8,7 @@ import logging
 import json
 import numpy as np
 
+from collections import OrderedDict
 from pylab import *
 from gensim.models import word2vec
 from tflearn.data_utils import to_categorical, pad_sequences
@@ -29,7 +30,8 @@ def logger_fn(name, input_file, level=logging.INFO):
     return tf_logger
 
 
-def create_prediction_file(output_file, front_data_id, behind_data_id, all_predict_labels, all_predict_values):
+def create_prediction_file(output_file, front_data_id, behind_data_id,
+                           all_labels, all_predict_labels, all_predict_values):
     """
     Create the prediction file.
 
@@ -37,6 +39,7 @@ def create_prediction_file(output_file, front_data_id, behind_data_id, all_predi
         output_file: The all classes predicted scores provided by network
         front_data_id: The front data record id info provided by class Data
         behind_data_id: The behind data record id info provided by class Data
+        all_labels: The all origin labels
         all_predict_labels: The all predict labels by threshold
         all_predict_values: The all predict values by threshold
     Raises:
@@ -53,14 +56,16 @@ def create_prediction_file(output_file, front_data_id, behind_data_id, all_predi
         data_size = len(all_predict_labels)
 
         for i in range(data_size):
+            labels = int(all_labels[i])
             predict_labels = int(all_predict_labels[i])
             predict_values = round(all_predict_values[i], 4)
-            data_record = {
-                'front_testid': front_data_id[i],
-                'behind_testid': behind_data_id[i],
-                'predict_labels': predict_labels,
-                'predict_values': predict_values
-            }
+            data_record = OrderedDict([
+                ('front_testid', front_data_id[i]),
+                ('behind_testid', behind_data_id[i]),
+                ('labels', labels),
+                ('predict_labels', predict_labels),
+                ('predict_values', predict_values)
+            ])
             fout.write(json.dumps(data_record, ensure_ascii=True) + '\n')
 
 
@@ -271,12 +276,12 @@ def pad_data(data, pad_seq_len):
     Returns:
         data_front: The padded front data
         data_behind: The padded behind data
-        labels: The labels
+        onehot_labels: The one-hot labels
     """
     data_front = pad_sequences(data.front_tokenindex, maxlen=pad_seq_len, value=0.)
     data_behind = pad_sequences(data.behind_tokenindex, maxlen=pad_seq_len, value=0.)
-    labels = to_categorical(data.labels, nb_classes=2)
-    return data_front, data_behind, labels
+    onehot_labels = to_categorical(data.labels, nb_classes=2)
+    return data_front, data_behind, onehot_labels
 
 
 def plot_seq_len(data_file, data, percentage=0.98):
