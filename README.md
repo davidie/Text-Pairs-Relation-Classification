@@ -69,9 +69,11 @@ References:
 
 ### TextANN
 
-
-
 ![]()
+
+References:
+
+- **Personal ideas 🙃**
 
 ---
 
@@ -89,13 +91,65 @@ References:
 
 ### TextRNN
 
+**Warning: Model can use but not finished yet 🤪!**
 
+#### TODO
+
+1. Add BN-LSTM cell unit.
+2. Add attention.
 
 ![]()
 
 References:
 
 - [Recurrent Neural Network for Text Classification with Multi-Task Learning](http://www.aaai.org/ocs/index.php/AAAI/AAAI15/paper/download/9745/9552)
+
+---
+
+### TextCRNN
+
+![]()
+
+References:
+
+- **Personal ideas 🙃**
+
+------
+
+### TextHAN
+
+![]()
+
+References:
+
+- [Hierarchical Attention Networks for Document Classification](https://www.cs.cmu.edu/~diyiy/docs/naacl16.pdf)
+
+------
+
+### TextSANN
+
+**Warning: Model can use but not finished yet 🤪!**
+
+#### TODO
+
+1. Add attention penalization loss.
+2. Add visualization.
+
+![]()
+
+References:
+
+- [A STRUCTURED SELF-ATTENTIVE SENTENCE EMBEDDING](https://arxiv.org/pdf/1703.03130.pdf)
+
+---
+
+### TextABCNN
+
+![]()
+
+References:
+
+- [ABCNN: Attention-Based Convolutional Neural Network for Modeling Sentence Pairs](https://arxiv.org/pdf/1512.05193.pdf)
 
 ---
 
