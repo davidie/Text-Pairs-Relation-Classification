@@ -156,8 +156,8 @@ class TextCRNN(object):
         lstm_outputs_behind = []
 
         # Bi-LSTM Layer
-        for index, pool_flat in enumerate(pool_flat_outputs_front):
-            with tf.variable_scope("Front-Bi-lstm-{0}".format(index)):
+        for i in range(len(pool_flat_outputs_front)):
+            with tf.variable_scope("Bi-lstm-{0}".format(i)):
                 lstm_fw_cell = rnn.BasicLSTMCell(lstm_hidden_size)  # forward direction cell
                 lstm_bw_cell = rnn.BasicLSTMCell(lstm_hidden_size)  # backward direction cell
                 if self.dropout_keep_prob is not None:
@@ -171,29 +171,23 @@ class TextCRNN(object):
                 # shape of `state`: tuple -> (outputs_state_fw, output_state_bw)
                 # shape of `outputs_state_fw`: tuple -> (c, h) c: memory cell; h: hidden state
 
-                outputs, state = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, pool_flat, dtype=tf.float32)
+                outputs_front, state_front = tf.nn.bidirectional_dynamic_rnn(
+                    lstm_fw_cell, lstm_bw_cell, pool_flat_outputs_front[i], dtype=tf.float32)
+                outputs_behind, state_behind = tf.nn.bidirectional_dynamic_rnn(
+                    lstm_fw_cell, lstm_bw_cell, pool_flat_outputs_behind[i], dtype=tf.float32)
+
                 # Concat output
-                lstm_concat = tf.concat(outputs, axis=2)  # [batch_size, sequence_length, lstm_hidden_size * 2]
-                lstm_out = tf.reduce_mean(lstm_concat, axis=1)  # [batch_size, lstm_hidden_size * 2]
+                # [batch_size, sequence_length, lstm_hidden_size * 2]
+                lstm_concat_front = tf.concat(outputs_front, axis=2)
+                lstm_concat_behind = tf.concat(outputs_behind, axis=2)
+
+                # [batch_size, lstm_hidden_size * 2]
+                lstm_out_front = tf.reduce_mean(lstm_concat_front, axis=1)
+                lstm_out_behind = tf.reduce_mean(lstm_concat_behind, axis=1)
 
                 # shape of `lstm_outputs`: list -> len(filter_sizes) * [batch_size, lstm_hidden_size * 2]
-                lstm_outputs_front.append(lstm_out)
-
-        for index, pool_flat in enumerate(pool_flat_outputs_behind):
-            with tf.variable_scope("Behind-Bi-lstm-{0}".format(index)):
-                lstm_fw_cell = rnn.BasicLSTMCell(lstm_hidden_size)  # forward direction cell
-                lstm_bw_cell = rnn.BasicLSTMCell(lstm_hidden_size)  # backward direction cell
-                if self.dropout_keep_prob is not None:
-                    lstm_fw_cell = rnn.DropoutWrapper(lstm_fw_cell, output_keep_prob=self.dropout_keep_prob)
-                    lstm_bw_cell = rnn.DropoutWrapper(lstm_bw_cell, output_keep_prob=self.dropout_keep_prob)
-
-                outputs, state = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, pool_flat, dtype=tf.float32)
-                # Concat output
-                lstm_concat = tf.concat(outputs, axis=2)  # [batch_size, sequence_length, lstm_hidden_size * 2]
-                lstm_out = tf.reduce_mean(lstm_concat, axis=1)  # [batch_size, lstm_hidden_size * 2]
-
-                # shape of `lstm_outputs`: list -> len(filter_sizes) * [batch_size, lstm_hidden_size * 2]
-                lstm_outputs_behind.append(lstm_out)
+                lstm_outputs_front.append(lstm_out_front)
+                lstm_outputs_behind.append(lstm_out_behind)
 
         # [batch_size, lstm_hidden_size * 2 * len(filter_sizes)]
         self.lstm_out_front = tf.concat(lstm_outputs_front, 1)
