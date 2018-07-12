@@ -108,6 +108,7 @@ target/
 *.pb
 runs/
 graph/
+RCNN/text_rcnn_*.py
 
 # Analysis File
 Data Analysis.md
