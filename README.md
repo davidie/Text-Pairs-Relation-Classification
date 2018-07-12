@@ -114,6 +114,16 @@ References:
 
 - **Personal ideas 🙃**
 
+---
+
+### TextRCNN
+
+![]()
+
+References:
+
+- **Personal ideas 🙃**
+
 ------
 
 ### TextHAN
