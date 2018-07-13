@@ -74,7 +74,7 @@ class TextRCNN(object):
             # Use random generated the word vector by default
             # Can also be obtained through our own word vectors trained by our corpus
             if pretrained_embedding is None:
-                self.embedding = tf.Variable(tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0,
+                self.embedding = tf.Variable(tf.random_uniform([vocab_size, embedding_size], minval=-1.0, maxval=1.0,
                                                                dtype=tf.float32), trainable=True, name="embedding")
             else:
                 if embedding_type == 0:
@@ -115,8 +115,8 @@ class TextRCNN(object):
             self.lstm_concat_behind = tf.concat(outputs_behind, axis=2)
 
             # shape of `lstm_out`: [batch_size, sequence_length, lstm_hidden_size * 2, 1]
-            self.lstm_out_front = tf.expand_dims(self.lstm_concat_front, -1)
-            self.lstm_out_behind = tf.expand_dims(self.lstm_concat_behind, -1)
+            self.lstm_out_front = tf.expand_dims(self.lstm_concat_front, axis=-1)
+            self.lstm_out_behind = tf.expand_dims(self.lstm_concat_behind, axis=-1)
 
         # Create a convolution + maxpool layer for each filter size
         pooled_outputs_front = []
@@ -127,7 +127,7 @@ class TextRCNN(object):
                 # Convolution Layer
                 filter_shape = [filter_size, lstm_hidden_size * 2, 1, num_filters]
                 W = tf.Variable(tf.truncated_normal(shape=filter_shape, stddev=0.1, dtype=tf.float32), name="W")
-                b = tf.Variable(tf.constant(0.1, shape=[num_filters], dtype=tf.float32), name="b")
+                b = tf.Variable(tf.constant(value=0.1, shape=[num_filters], dtype=tf.float32), name="b")
                 conv_front = tf.nn.conv2d(
                     self.lstm_out_front,
                     W,
@@ -195,21 +195,21 @@ class TextRCNN(object):
         # Combine all the pooled features
         num_filters_total = num_filters * len(filter_sizes)
 
-        # shape of `pool`: [batch_size, 1, 1, num_filters * 2 * 3]
-        self.pool_front = tf.concat(pooled_outputs_front, 3)
-        self.pool_behind = tf.concat(pooled_outputs_behind, 3)
+        # shape of `pool`: [batch_size, 1, 1, num_filters_total * 2]
+        self.pool_front = tf.concat(pooled_outputs_front, axis=3)
+        self.pool_behind = tf.concat(pooled_outputs_behind, axis=3)
 
-        self.pool_flat_front = tf.reshape(self.pool_front, [-1, num_filters_total * 2])
-        self.pool_flat_behind = tf.reshape(self.pool_behind, [-1, num_filters_total * 2])
+        self.pool_flat_front = tf.reshape(self.pool_front, shape=[-1, num_filters_total * 2])
+        self.pool_flat_behind = tf.reshape(self.pool_behind, shape=[-1, num_filters_total * 2])
 
-        # shape of `pool_flat_combine`: [batch_size, num_filters * 2 * 3 * 2]
+        # shape of `pool_flat_combine`: [batch_size, num_filters_total * 2 * 2]
         self.pool_flat_combine = tf.concat([self.pool_flat_front, self.pool_flat_behind], axis=1)
 
         # Fully Connected Layer
         with tf.name_scope("fc"):
             W = tf.Variable(tf.truncated_normal(shape=[num_filters_total * 2 * 2, fc_hidden_size],
                                                 stddev=0.1, dtype=tf.float32), name="W")
-            b = tf.Variable(tf.constant(0.1, shape=[fc_hidden_size], dtype=tf.float32), name="b")
+            b = tf.Variable(tf.constant(value=0.1, shape=[fc_hidden_size], dtype=tf.float32), name="b")
             self.fc = tf.nn.xw_plus_b(self.pool_flat_combine, W, b)
 
             # Batch Normalization Layer
@@ -229,7 +229,7 @@ class TextRCNN(object):
         with tf.name_scope("output"):
             W = tf.Variable(tf.truncated_normal(shape=[fc_hidden_size, num_classes],
                                                 stddev=0.1, dtype=tf.float32), name="W")
-            b = tf.Variable(tf.constant(0.1, shape=[num_classes], dtype=tf.float32), name="b")
+            b = tf.Variable(tf.constant(value=0.1, shape=[num_classes], dtype=tf.float32), name="b")
             self.logits = tf.nn.xw_plus_b(self.h_drop, W, b, name="logits")
             self.softmax_scores = tf.nn.softmax(self.logits, name="softmax_scores")
             self.predictions = tf.argmax(self.logits, 1, name="predictions")

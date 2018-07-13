@@ -74,7 +74,7 @@ class TextCRNN(object):
             # Use random generated the word vector by default
             # Can also be obtained through our own word vectors trained by our corpus
             if pretrained_embedding is None:
-                self.embedding = tf.Variable(tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0,
+                self.embedding = tf.Variable(tf.random_uniform([vocab_size, embedding_size], minval=-1.0, maxval=1.0,
                                                                dtype=tf.float32), trainable=True, name="embedding")
             else:
                 if embedding_type == 0:
@@ -84,8 +84,8 @@ class TextCRNN(object):
                                                  dtype=tf.float32, name="embedding")
             self.embedded_sentence_front = tf.nn.embedding_lookup(self.embedding, self.input_x_front)
             self.embedded_sentence_behind = tf.nn.embedding_lookup(self.embedding, self.input_x_behind)
-            self.embedded_sentence_expanded_front = tf.expand_dims(self.embedded_sentence_front, -1)
-            self.embedded_sentence_expanded_behind = tf.expand_dims(self.embedded_sentence_behind, -1)
+            self.embedded_sentence_expanded_front = tf.expand_dims(self.embedded_sentence_front, axis=-1)
+            self.embedded_sentence_expanded_behind = tf.expand_dims(self.embedded_sentence_behind, axis=-1)
 
         # Create a convolution + maxpool layer for each filter size
         pooled_outputs_front = []
@@ -96,7 +96,7 @@ class TextCRNN(object):
                 # Convolution Layer
                 filter_shape = [filter_size, embedding_size, 1, num_filters]
                 W = tf.Variable(tf.truncated_normal(shape=filter_shape, stddev=0.1, dtype=tf.float32), name="W")
-                b = tf.Variable(tf.constant(0.1, shape=[num_filters], dtype=tf.float32), name="b")
+                b = tf.Variable(tf.constant(value=0.1, shape=[num_filters], dtype=tf.float32), name="b")
                 conv_front = tf.nn.conv2d(
                     self.embedded_sentence_expanded_front,
                     W,
@@ -143,12 +143,12 @@ class TextCRNN(object):
         pool_flat_outputs_behind = []
 
         for i in pooled_outputs_front:
-            pool_flat = tf.reshape(i, [-1, 1, num_filters])
+            pool_flat = tf.reshape(i, shape=[-1, 1, num_filters])
             pool_flat = tf.nn.dropout(pool_flat, self.dropout_keep_prob)
             pool_flat_outputs_front.append(pool_flat)
 
         for i in pooled_outputs_behind:
-            pool_flat = tf.reshape(i, [-1, 1, num_filters])
+            pool_flat = tf.reshape(i, shape=[-1, 1, num_filters])
             pool_flat = tf.nn.dropout(pool_flat, self.dropout_keep_prob)
             pool_flat_outputs_behind.append(pool_flat)
 
@@ -190,17 +190,17 @@ class TextCRNN(object):
                 lstm_outputs_behind.append(lstm_out_behind)
 
         # [batch_size, lstm_hidden_size * 2 * len(filter_sizes)]
-        self.lstm_out_front = tf.concat(lstm_outputs_front, 1)
-        self.lstm_out_behind = tf.concat(lstm_outputs_behind, 1)
+        self.lstm_out_front = tf.concat(lstm_outputs_front, axis=1)
+        self.lstm_out_behind = tf.concat(lstm_outputs_behind, axis=1)
 
         # [batch_size, lstm_hidden_size * 2 * len(filter_sizes) * 2]
-        self.lstm_out_combine = tf.concat([self.lstm_out_front, self.lstm_out_behind], 1)
+        self.lstm_out_combine = tf.concat([self.lstm_out_front, self.lstm_out_behind], axis=1)
 
         # Fully Connected Layer
         with tf.name_scope("fc"):
             W = tf.Variable(tf.truncated_normal(shape=[lstm_hidden_size * 2 * len(filter_sizes) * 2, fc_hidden_size],
                                                 stddev=0.1, dtype=tf.float32), name="W")
-            b = tf.Variable(tf.constant(0.1, shape=[fc_hidden_size], dtype=tf.float32), name="b")
+            b = tf.Variable(tf.constant(value=0.1, shape=[fc_hidden_size], dtype=tf.float32), name="b")
             self.fc = tf.nn.xw_plus_b(self.lstm_out_combine, W, b)
 
             # Batch Normalization Layer
@@ -220,7 +220,7 @@ class TextCRNN(object):
         with tf.name_scope("output"):
             W = tf.Variable(tf.truncated_normal(shape=[fc_hidden_size, num_classes],
                                                 stddev=0.1, dtype=tf.float32), name="W")
-            b = tf.Variable(tf.constant(0.1, shape=[num_classes], dtype=tf.float32), name="b")
+            b = tf.Variable(tf.constant(value=0.1, shape=[num_classes], dtype=tf.float32), name="b")
             self.logits = tf.nn.xw_plus_b(self.h_drop, W, b, name="logits")
             self.softmax_scores = tf.nn.softmax(self.logits, name="softmax_scores")
             self.predictions = tf.argmax(self.logits, 1, name="predictions")
