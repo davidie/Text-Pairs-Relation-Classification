@@ -1,6 +1,4 @@
 # -*- coding:utf-8 -*-
-__author__ = 'Randolph'
-
 import os
 import sys
 import time
@@ -14,19 +12,6 @@ from tensorboard.plugins import projector
 # Parameters
 # ==================================================
 
-TRAIN_OR_RESTORE = input("☛ Train or Restore?(T/R) \n")
-
-while not (TRAIN_OR_RESTORE.isalpha() and TRAIN_OR_RESTORE.upper() in ['T', 'R']):
-    TRAIN_OR_RESTORE = input('✘ The format of your input is illegal, please re-input: ')
-logging.info('✔︎ The format of your input is legal, now loading to next step...')
-
-TRAIN_OR_RESTORE = TRAIN_OR_RESTORE.upper()
-
-if TRAIN_OR_RESTORE == 'T':
-    logger = dh.logger_fn('tflog', 'logs/training-{0}.log'.format(time.asctime()))
-if TRAIN_OR_RESTORE == 'R':
-    logger = dh.logger_fn('tflog', 'logs/restore-{0}.log'.format(time.asctime()))
-
 TRAININGSET_DIR = '../data/Train.json'
 VALIDATIONSET_DIR = '../data/Validation.json'
 METADATA_DIR = '../data/metadata.tsv'
@@ -36,7 +21,7 @@ tf.flags.DEFINE_string("training_data_file", TRAININGSET_DIR, "Data source for t
 tf.flags.DEFINE_string("validation_data_file", VALIDATIONSET_DIR, "Data source for the validation data.")
 tf.flags.DEFINE_string("metadata_file", METADATA_DIR, "Metadata file for embedding visualization"
                                                       "(Each line is a word segment in metadata_file).")
-tf.flags.DEFINE_string("train_or_restore", TRAIN_OR_RESTORE, "Train or Restore.")
+tf.flags.DEFINE_string("train_or_restore", 'Train', "Train or Restore.")
 
 # Model Hyperparameters
 tf.flags.DEFINE_float("learning_rate", 0.001, "The learning rate (default: 0.001)")
@@ -74,21 +59,21 @@ def train_rnn():
     """Training RNN model."""
 
     # Load sentences, labels, and training parameters
-    logger.info('✔︎ Loading data...')
+    logger.info('Loading data...')
 
-    logger.info('✔︎ Training data processing...')
+    logger.info('Training data processing...')
     train_data = dh.load_data_and_labels(FLAGS.training_data_file, FLAGS.embedding_dim)
 
-    logger.info('✔︎ Validation data processing...')
+    logger.info('Validation data processing...')
     validation_data = dh.load_data_and_labels(FLAGS.validation_data_file, FLAGS.embedding_dim)
 
     logger.info('Recommended padding Sequence length is: {0}'.format(FLAGS.pad_seq_len))
 
-    logger.info('✔︎ Training data padding...')
-    x_train_front, x_train_behind, y_train = dh.pad_data(train_data, FLAGS.pad_seq_len)
+    logger.info('Training data padding...')
+    x_train_1, x_train_2, y_train = dh.pad_data(train_data, FLAGS.pad_seq_len)
 
-    logger.info('✔︎ Validation data padding...')
-    x_validation_front, x_validation_behind, y_validation = dh.pad_data(validation_data, FLAGS.pad_seq_len)
+    logger.info('Validation data padding...')
+    x_validation_1, x_validation_2, y_validation = dh.pad_data(validation_data, FLAGS.pad_seq_len)
 
     # Build vocabulary
     VOCAB_SIZE = dh.load_vocab_size(FLAGS.embedding_dim)
@@ -134,22 +119,22 @@ def train_rnn():
             grad_summaries_merged = tf.summary.merge(grad_summaries)
 
             # Output directory for models and summaries
-            if FLAGS.train_or_restore == 'R':
-                MODEL = input("☛ Please input the checkpoints model you want to restore, "
+            if FLAGS.train_or_restore == 'Restore':
+                MODEL = input("Please input the checkpoints model you want to restore, "
                               "it should be like(1490175368): ")  # The model you want to restore
 
                 while not (MODEL.isdigit() and len(MODEL) == 10):
-                    MODEL = input('✘ The format of your input is illegal, please re-input: ')
-                logger.info('✔︎ The format of your input is legal, now loading to next step...')
+                    MODEL = input('The format of your input is illegal, please re-input: ')
+                logger.info('The format of your input is legal, now loading to next step...')
 
                 checkpoint_dir = 'runs/' + MODEL + '/checkpoints/'
 
                 out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", MODEL))
-                logger.info("✔︎ Writing to {0}\n".format(out_dir))
+                logger.info("Writing to {0}\n".format(out_dir))
             else:
                 timestamp = str(int(time.time()))
                 out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
-                logger.info("✔︎ Writing to {0}\n".format(out_dir))
+                logger.info("Writing to {0}\n".format(out_dir))
 
             # Summaries for loss and accuracy
             loss_summary = tf.summary.scalar("loss", rnn.loss)
@@ -167,9 +152,9 @@ def train_rnn():
 
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.num_checkpoints)
 
-            if FLAGS.train_or_restore == 'R':
+            if FLAGS.train_or_restore == 'Restore':
                 # Load rnn model
-                logger.info("✔ Loading model...")
+                logger.info("Loading model...")
                 checkpoint_file = tf.train.latest_checkpoint(checkpoint_dir)
                 logger.info(checkpoint_file)
 
@@ -197,11 +182,11 @@ def train_rnn():
 
             current_step = sess.run(rnn.global_step)
 
-            def train_step(x_batch_front, x_batch_behind, y_batch):
+            def train_step(x_batch_1, x_batch_2, y_batch):
                 """A single training step"""
                 feed_dict = {
-                    rnn.input_x_front: x_batch_front,
-                    rnn.input_x_behind: x_batch_behind,
+                    rnn.input_x_1: x_batch_1,
+                    rnn.input_x_2: x_batch_2,
                     rnn.input_y: y_batch,
                     rnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
                     rnn.is_training: True
@@ -211,11 +196,11 @@ def train_rnn():
                 logger.info("step {0}: loss {1:g}, acc {2:g}".format(step, loss, accuracy))
                 train_summary_writer.add_summary(summaries, step)
 
-            def validation_step(x_batch_front, x_batch_behind, y_batch, writer=None):
+            def validation_step(x_batch_1, x_batch_2, y_batch, writer=None):
                 """Evaluates model on a validation set"""
                 feed_dict = {
-                    rnn.input_x_front: x_batch_front,
-                    rnn.input_x_behind: x_batch_behind,
+                    rnn.input_x_1: x_batch_1,
+                    rnn.input_x_2: x_batch_2,
                     rnn.input_y: y_batch,
                     rnn.dropout_keep_prob: 1.0,
                     rnn.is_training: False
@@ -230,29 +215,29 @@ def train_rnn():
 
             # Generate batches
             batches = dh.batch_iter(
-                list(zip(x_train_front, x_train_behind, y_train)), FLAGS.batch_size, FLAGS.num_epochs)
+                list(zip(x_train_1, x_train_2, y_train)), FLAGS.batch_size, FLAGS.num_epochs)
 
-            num_batches_per_epoch = int((len(x_train_front) - 1) / FLAGS.batch_size) + 1
+            num_batches_per_epoch = int((len(x_train_1) - 1) / FLAGS.batch_size) + 1
 
             # Training loop. For each batch...
             for batch in batches:
-                x_batch_front, x_batch_behind, y_batch = zip(*batch)
-                train_step(x_batch_front, x_batch_behind, y_batch)
+                x_batch_1, x_batch_2, y_batch = zip(*batch)
+                train_step(x_batch_1, x_batch_2, y_batch)
                 current_step = tf.train.global_step(sess, rnn.global_step)
 
                 if current_step % FLAGS.evaluate_every == 0:
                     logger.info("\nEvaluation:")
-                    validation_step(x_validation_front, x_validation_behind, y_validation,
+                    validation_step(x_validation_1, x_validation_2, y_validation,
                                     writer=validation_summary_writer)
                 if current_step % FLAGS.checkpoint_every == 0:
                     checkpoint_prefix = os.path.join(checkpoint_dir, "model")
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-                    logger.info("✔︎ Saved model checkpoint to {0}\n".format(path))
+                    logger.info("Saved model checkpoint to {0}\n".format(path))
                 if current_step % num_batches_per_epoch == 0:
                     current_epoch = current_step // num_batches_per_epoch
-                    logger.info("✔︎ Epoch {0} has finished!".format(current_epoch))
+                    logger.info("Epoch {0} has finished!".format(current_epoch))
 
-    logger.info("✔︎ Done.")
+    logger.info("Done.")
 
 
 if __name__ == '__main__':
