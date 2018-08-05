@@ -61,8 +61,8 @@ class TextRNN(object):
             embedding_size, embedding_type, l2_reg_lambda=0.0, pretrained_embedding=None):
 
         # Placeholders for input, output, dropout_prob and training_tag
-        self.input_x_front = tf.placeholder(tf.int32, [None, sequence_length], name="input_x_front")
-        self.input_x_behind = tf.placeholder(tf.int32, [None, sequence_length], name="input_x_behind")
+        self.input_x_1 = tf.placeholder(tf.int32, [None, sequence_length], name="input_x_1")
+        self.input_x_2 = tf.placeholder(tf.int32, [None, sequence_length], name="input_x_2")
         self.input_y = tf.placeholder(tf.float32, [None, num_classes], name="input_y")
         self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
         self.is_training = tf.placeholder(tf.bool, name="is_training")
@@ -82,8 +82,8 @@ class TextRNN(object):
                 if embedding_type == 1:
                     self.embedding = tf.Variable(pretrained_embedding, trainable=True,
                                                  dtype=tf.float32, name="embedding")
-            self.embedded_sentence_front = tf.nn.embedding_lookup(self.embedding, self.input_x_front)
-            self.embedded_sentence_behind = tf.nn.embedding_lookup(self.embedding, self.input_x_behind)
+            self.embedded_sentence_1 = tf.nn.embedding_lookup(self.embedding, self.input_x_1)
+            self.embedded_sentence_2 = tf.nn.embedding_lookup(self.embedding, self.input_x_2)
 
         # Bi-LSTM Layer
         with tf.name_scope("Bi-lstm"):
@@ -93,23 +93,23 @@ class TextRNN(object):
                 lstm_fw_cell = rnn.DropoutWrapper(lstm_fw_cell, output_keep_prob=self.dropout_keep_prob)
                 lstm_bw_cell = rnn.DropoutWrapper(lstm_bw_cell, output_keep_prob=self.dropout_keep_prob)
 
-            outputs_sentence_front, state_sentence_front = tf.nn.bidirectional_dynamic_rnn(
-                lstm_fw_cell, lstm_bw_cell,self.embedded_sentence_front, dtype=tf.float32)
+            outputs_sentence_1, state_sentence_1 = tf.nn.bidirectional_dynamic_rnn(
+                lstm_fw_cell, lstm_bw_cell,self.embedded_sentence_1, dtype=tf.float32)
 
-            outputs_sentence_behind, state_sentence_behind = tf.nn.bidirectional_dynamic_rnn(
-                lstm_fw_cell, lstm_bw_cell, self.embedded_sentence_behind, dtype=tf.float32)
+            outputs_sentence_2, state_sentence_2 = tf.nn.bidirectional_dynamic_rnn(
+                lstm_fw_cell, lstm_bw_cell, self.embedded_sentence_2, dtype=tf.float32)
 
         # Concat output
-        # shape of `lstm_concat_front`: [batch_size, sequence_length, lstm_hidden_size * 2]
-        self.lstm_concat_front = tf.concat(outputs_sentence_front, axis=2)
-        self.lstm_concat_behind = tf.concat(outputs_sentence_behind, axis=2)
+        # shape of `lstm_concat_1`: [batch_size, sequence_length, lstm_hidden_size * 2]
+        self.lstm_concat_1 = tf.concat(outputs_sentence_1, axis=2)
+        self.lstm_concat_2 = tf.concat(outputs_sentence_2, axis=2)
 
-        # shape of `lstm_out_front`: [batch_size, lstm_hidden_size * 2]
-        self.lstm_out_front = tf.reduce_mean(self.lstm_concat_front, axis=1)
-        self.lstm_out_behind = tf.reduce_mean(self.lstm_concat_behind, axis=1)
+        # shape of `lstm_out_1`: [batch_size, lstm_hidden_size * 2]
+        self.lstm_out_1 = tf.reduce_mean(self.lstm_concat_1, axis=1)
+        self.lstm_out_2 = tf.reduce_mean(self.lstm_concat_2, axis=1)
 
         # shape of `lstm_out_concat`: [batch_size, lstm_hidden_size * 2 * 2]
-        self.lstm_out_concat = tf.concat([self.lstm_out_front, self.lstm_out_behind], axis=1)
+        self.lstm_out_concat = tf.concat([self.lstm_out_1, self.lstm_out_2], axis=1)
 
         # Fully Connected Layer
         with tf.name_scope("fc"):
