@@ -1,5 +1,4 @@
 # -*- coding:utf-8 -*-
-__author__ = 'Randolph'
 
 import os
 import sys
@@ -13,11 +12,11 @@ from utils import data_helpers as dh
 
 logger = dh.logger_fn('tflog', 'logs/test-{0}.log'.format(time.asctime()))
 
-MODEL = input("☛ Please input the model file you want to test, it should be like(1490175368): ")
+MODEL = input("Please input the model file you want to test, it should be like(1490175368): ")
 
 while not (MODEL.isdigit() and len(MODEL) == 10):
-    MODEL = input('✘ The format of your input is illegal, it should be like(1490175368), please re-input: ')
-logger.info('✔︎ The format of your input is legal, now loading to next step...')
+    MODEL = input('The format of your input is illegal, it should be like(1490175368), please re-input: ')
+logger.info('The format of your input is legal, now loading to next step...')
 
 TRAININGSET_DIR = '../data/Train.json'
 VALIDATIONSET_DIR = '../data/Validation.json'
@@ -59,18 +58,18 @@ def test_rnn():
     """Test RNN model."""
 
     # Load data
-    logger.info("✔ Loading data...")
+    logger.info("Loading data...")
     logger.info('Recommended padding Sequence length is: {0}'.format(FLAGS.pad_seq_len))
 
-    logger.info('✔︎ Test data processing...')
+    logger.info('Test data processing...')
     test_data = dh.load_data_and_labels(FLAGS.test_data_file, FLAGS.embedding_dim)
 
-    logger.info('✔︎ Test data padding...')
-    x_test_front, x_test_behind, y_test = dh.pad_data(test_data, FLAGS.pad_seq_len)
+    logger.info('Test data padding...')
+    x_test_1, x_test_2, y_test = dh.pad_data(test_data, FLAGS.pad_seq_len)
     y_test_labels = test_data.labels
 
     # Load rnn model
-    logger.info("✔ Loading model...")
+    logger.info("Loading model...")
     checkpoint_file = tf.train.latest_checkpoint(FLAGS.checkpoint_dir)
     logger.info(checkpoint_file)
 
@@ -87,8 +86,8 @@ def test_rnn():
             saver.restore(sess, checkpoint_file)
 
             # Get the placeholders from the graph by name
-            input_x_front = graph.get_operation_by_name("input_x_front").outputs[0]
-            input_x_behind = graph.get_operation_by_name("input_x_behind").outputs[0]
+            input_x_1 = graph.get_operation_by_name("input_x_1").outputs[0]
+            input_x_2 = graph.get_operation_by_name("input_x_2").outputs[0]
             input_y = graph.get_operation_by_name("input_y").outputs[0]
             dropout_keep_prob = graph.get_operation_by_name("dropout_keep_prob").outputs[0]
             is_training = graph.get_operation_by_name("is_training").outputs[0]
@@ -108,7 +107,7 @@ def test_rnn():
             tf.train.write_graph(output_graph_def, 'graph', 'graph-rnn-{0}.pb'.format(MODEL), as_text=False)
 
             # Generate batches for one epoch
-            batches = dh.batch_iter(list(zip(x_test_front, x_test_behind, y_test, y_test_labels)),
+            batches = dh.batch_iter(list(zip(x_test_1, x_test_2, y_test, y_test_labels)),
                                     FLAGS.batch_size, 1, shuffle=False)
 
             # Collect the predictions here
@@ -117,10 +116,10 @@ def test_rnn():
             all_predicted_values = []
 
             for index, x_test_batch in enumerate(batches):
-                x_batch_front, x_batch_behind, y_batch, y_batch_labels = zip(*x_test_batch)
+                x_batch_1, x_batch_2, y_batch, y_batch_labels = zip(*x_test_batch)
                 feed_dict = {
-                    input_x_front: x_batch_front,
-                    input_x_behind: x_batch_behind,
+                    input_x_1: x_batch_1,
+                    input_x_2: x_batch_2,
                     input_y: y_batch,
                     dropout_keep_prob: 1.0,
                     is_training: False
@@ -136,7 +135,7 @@ def test_rnn():
 
                 batch_loss = sess.run(loss, feed_dict)
                 batch_acc = sess.run(accuracy, feed_dict)
-                logger.info("✔︎ Test batch {0}: loss {1:g}, accuracy {2:g}.".format((index + 1), batch_loss, batch_acc))
+                logger.info("Test batch {0}: loss {1:g}, accuracy {2:g}.".format((index + 1), batch_loss, batch_acc))
 
             # Save the prediction result
             if not os.path.exists(SAVE_DIR):
@@ -145,7 +144,7 @@ def test_rnn():
                                       behind_data_id=test_data.behind_testid, all_labels=all_labels,
                                       all_predict_labels=all_predicted_labels, all_predict_values=all_predicted_values)
 
-    logger.info("✔ Done.")
+    logger.info("Done.")
 
 
 if __name__ == '__main__':
